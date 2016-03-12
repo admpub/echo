@@ -110,7 +110,7 @@ func (c *context) Request() engine.Request {
 	return c.request
 }
 
-// Response returns *Response.
+// Response returns `engine.Response`.
 func (c *context) Response() engine.Response {
 	return c.response
 }

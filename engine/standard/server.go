@@ -11,7 +11,7 @@ import (
 
 type (
 	Server struct {
-		server  *http.Server
+		*http.Server
 		config  *engine.Config
 		handler engine.Handler
 		logger  *log.Logger
@@ -42,7 +42,7 @@ func NewFromTLS(addr, certfile, keyfile string) *Server {
 
 func NewFromConfig(c *engine.Config) (s *Server) {
 	s = &Server{
-		server: new(http.Server),
+		Server: new(http.Server),
 		config: c,
 		pool: &Pool{
 			request: sync.Pool{
@@ -71,8 +71,8 @@ func NewFromConfig(c *engine.Config) (s *Server) {
 		}),
 		logger: log.New("echo"),
 	}
-	s.server.Addr = c.Address
-	s.server.Handler = s
+	s.Addr = c.Address
+	s.Handler = s
 	return
 }
 
@@ -88,9 +88,9 @@ func (s *Server) Start() {
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 	if certfile != "" && keyfile != "" {
-		s.logger.Fatal(s.server.ListenAndServeTLS(certfile, keyfile))
+		s.logger.Fatal(s.ListenAndServeTLS(certfile, keyfile))
 	} else {
-		s.logger.Fatal(s.server.ListenAndServe())
+		s.logger.Fatal(s.ListenAndServe())
 	}
 }
 
@@ -118,30 +118,28 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.pool.header.Put(resHdr)
 }
 
-func (s *Server) Server() *http.Server {
-	return s.server
-}
-
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
 func WrapHandler(h http.Handler) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		w := c.Response().Object().(http.ResponseWriter)
-		r := c.Request().Object().(*http.Request)
+		w := c.Response().(*Response).ResponseWriter
+		r := c.Request().(*Request).Request
 		h.ServeHTTP(w, r)
 		return nil
 	}
 }
 
-// WrapMiddleware wraps `http.Handler` into `echo.MiddlewareFunc`
-func WrapMiddleware(h http.Handler) echo.MiddlewareFunc {
+// WrapMiddleware wraps `func(http.Handler) http.Handler` into `echo.MiddlewareFunc`
+func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
-			w := c.Response().Object().(http.ResponseWriter)
-			r := c.Request().Object().(*http.Request)
-			if !c.Response().Committed() {
-				h.ServeHTTP(w, r)
-			}
-			return next.Handle(c)
+		return echo.HandlerFunc(func(c echo.Context) (err error) {
+			req := c.Request().(*Request)
+			res := c.Response().(*Response)
+			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				res.ResponseWriter = w
+				req.Request = r
+				err = next.Handle(c)
+			})).ServeHTTP(res.ResponseWriter, req.Request)
+			return
 		})
 	}
 }

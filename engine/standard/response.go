@@ -10,7 +10,7 @@ import (
 
 type (
 	Response struct {
-		response  http.ResponseWriter
+		http.ResponseWriter
 		header    engine.Header
 		status    int
 		size      int64
@@ -22,10 +22,10 @@ type (
 
 func NewResponse(w http.ResponseWriter, l *log.Logger) *Response {
 	return &Response{
-		response: w,
-		header:   &Header{w.Header()},
-		writer:   w,
-		logger:   l,
+		ResponseWriter: w,
+		header:         &Header{w.Header()},
+		writer:         w,
+		logger:         l,
 	}
 }
 
@@ -39,7 +39,7 @@ func (r *Response) WriteHeader(code int) {
 		return
 	}
 	r.status = code
-	r.response.WriteHeader(code)
+	r.ResponseWriter.WriteHeader(code)
 	r.committed = true
 }
 
@@ -69,12 +69,8 @@ func (r *Response) Writer() io.Writer {
 	return r.writer
 }
 
-func (r *Response) Object() interface{} {
-	return r.response
-}
-
 func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
-	r.response = w
+	r.ResponseWriter = w
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0

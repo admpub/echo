@@ -1,19 +1,19 @@
 ---
-title: Hello World
+title: CORS
 menu:
   side:
     parent: recipes
-    weight: 1
+    weight: 3
 ---
 
 ### Server
 
 `main.go`
 
-{{< embed "hello-world/main.go" >}}
+{{< embed "cors/main.go" >}}
 
 ### Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code]({{< source "hello-world" >}})
+### [Source Code]({{< source "cors" >}})
